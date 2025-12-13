@@ -1,0 +1,1807 @@
+--[[ WindUI Script Center ]] 
+local WindUI 
+do 
+    local ok, result = pcall(function() 
+        return require("./src/Init") 
+    end) 
+    if ok then 
+        WindUI = result 
+    else 
+        WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))() 
+    end 
+end 
+
+-- 创建主窗口
+local Window = WindUI:CreateWindow({
+    Title = "脚本中心 | WindUI",
+    Author = "by 脚本中心",
+    Folder = "ScriptCenter",
+    NewElements = true,
+    HideSearchBar = false,
+    OpenButton = {
+        Title = "打开脚本中心",
+        CornerRadius = UDim.new(1,0),
+        StrokeThickness = 3,
+        Enabled = true,
+        Draggable = true,
+        OnlyMobile = false,
+        Color = ColorSequence.new(
+            Color3.fromHex("#000000"), -- 黑色
+            Color3.fromHex("#FFFFFF")  -- 白色
+        )
+    }
+})
+
+-- 添加版本号标签
+Window:Tag({
+    Title = "v1.0.2",
+    Color = Color3.fromHex("#30ff6a"),
+    Radius = 13, -- 圆角
+})
+
+-- 全局变量
+local _G = {
+    AutoChatEnabled = false,
+    CustomChatMessage = "",
+    ChatInterval = 5,
+    Flying = false,
+    TargetPlayerName = "",
+    ChatConnection = nil,
+    WalkSpeedEnabled = false,
+    JumpPowerEnabled = false,
+    GravityEnabled = false,
+    CurrentSound = nil,
+    NoclipEnabled = false,
+    ESPEnabled = false,
+    NoclipConnection = nil,
+    ESPConnections = {}
+}
+
+-- 通用标签页
+local GeneralTab = Window:Tab({
+    Title = "通用",
+    Icon = "settings",
+})
+
+-- 移动设置部分
+local MovementSection = GeneralTab:Section({
+    Title = "移动设置",
+})
+
+-- 移动速度启用按钮
+MovementSection:Toggle({
+    Title = "启用移动速度修改",
+    Desc = "开启后可以调整移动速度",
+    Default = false,
+    Callback = function(state)
+        _G.WalkSpeedEnabled = state
+        if state then
+            WindUI:Notify({
+                Title = "移动速度",
+                Content = "移动速度修改已启用",
+                Icon = "zap",
+            })
+        else
+            -- 恢复默认移动速度
+            local player = game.Players.LocalPlayer
+            local character = player.Character
+            if character then
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid.WalkSpeed = 16
+                end
+            end
+            WindUI:Notify({
+                Title = "移动速度",
+                Content = "移动速度修改已禁用",
+                Icon = "zap",
+            })
+        end
+    end
+})
+
+MovementSection:Slider({
+    Title = "移动速度",
+    Desc = "调整角色移动速度",
+    Step = 1,
+    Value = {
+        Min = 16,
+        Max = 200,
+        Default = 16,
+    },
+    Callback = function(value)
+        if _G.WalkSpeedEnabled then
+            local player = game.Players.LocalPlayer
+            local character = player.Character
+            if character then
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid.WalkSpeed = value
+                end
+            end
+        end
+    end
+})
+
+-- 跳跃高度启用按钮
+MovementSection:Toggle({
+    Title = "启用跳跃高度修改",
+    Desc = "开启后可以调整跳跃高度",
+    Default = false,
+    Callback = function(state)
+        _G.JumpPowerEnabled = state
+        if state then
+            WindUI:Notify({
+                Title = "跳跃高度",
+                Content = "跳跃高度修改已启用",
+                Icon = "arrow-up",
+            })
+        else
+            -- 恢复默认跳跃高度
+            local player = game.Players.LocalPlayer
+            local character = player.Character
+            if character then
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid.JumpPower = 50
+                end
+            end
+            WindUI:Notify({
+                Title = "跳跃高度",
+                Content = "跳跃高度修改已禁用",
+                Icon = "arrow-up",
+            })
+        end
+    end
+})
+
+MovementSection:Slider({
+    Title = "跳跃速度",
+    Desc = "调整角色跳跃高度",
+    Step = 1,
+    Value = {
+        Min = 50,
+        Max = 200,
+        Default = 50,
+    },
+    Callback = function(value)
+        if _G.JumpPowerEnabled then
+            local player = game.Players.LocalPlayer
+            local character = player.Character
+            if character then
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid.JumpPower = value
+                end
+            end
+        end
+    end
+})
+
+-- 物理设置部分
+local PhysicsSection = GeneralTab:Section({
+    Title = "物理设置",
+})
+
+-- 重力设置启用按钮
+PhysicsSection:Toggle({
+    Title = "启用重力修改",
+    Desc = "开启后可以调整世界重力",
+    Default = false,
+    Callback = function(state)
+        _G.GravityEnabled = state
+        if state then
+            WindUI:Notify({
+                Title = "重力设置",
+                Content = "重力修改已启用",
+                Icon = "weight",
+            })
+        else
+            -- 恢复默认重力
+            workspace.Gravity = 196.2
+            WindUI:Notify({
+                Title = "重力设置",
+                Content = "重力修改已禁用",
+                Icon = "weight",
+            })
+        end
+    end
+})
+
+PhysicsSection:Slider({
+    Title = "重力设置",
+    Desc = "调整世界重力",
+    Step = 1,
+    Value = {
+        Min = 0,
+        Max = 196,
+        Default = 196,
+    },
+    Callback = function(value)
+        if _G.GravityEnabled then
+            workspace.Gravity = value
+        end
+    end
+})
+
+-- 穿墙模式 - 修复版
+local NoclipSection = GeneralTab:Section({
+    Title = "穿墙模式",
+})
+
+NoclipSection:Toggle({
+    Title = "穿墙模式",
+    Desc = "启用后可以穿过墙壁和物体",
+    Default = false,
+    Callback = function(state)
+        _G.NoclipEnabled = state
+        
+        if state then
+            -- 启动穿墙模式
+            _G.NoclipConnection = game:GetService("RunService").Stepped:Connect(function()
+                if _G.NoclipEnabled and game.Players.LocalPlayer.Character then
+                    for _, part in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+                        if part:IsA("BasePart") and part.CanCollide then
+                            part.CanCollide = false
+                        end
+                    end
+                end
+            end)
+            WindUI:Notify({
+                Title = "穿墙模式",
+                Content = "穿墙模式已启用",
+                Icon = "ghost",
+            })
+        else
+            -- 关闭穿墙模式 - 修复版
+            if _G.NoclipConnection then
+                _G.NoclipConnection:Disconnect()
+                _G.NoclipConnection = nil
+            end
+            
+            -- 恢复碰撞
+            if game.Players.LocalPlayer.Character then
+                for _, part in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = true
+                    end
+                end
+            end
+            
+            WindUI:Notify({
+                Title = "穿墙模式",
+                Content = "穿墙模式已禁用",
+                Icon = "ghost",
+            })
+        end
+    end
+})
+
+-- 透视功能 - 修复版
+local ESPSection = GeneralTab:Section({
+    Title = "透视功能",
+})
+
+-- ESP绘制函数
+local function createESP(player)
+    local character = player.Character
+    if not character then return end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "ESP_Highlight"
+    highlight.Adornee = character
+    highlight.Parent = character
+    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+    highlight.FillTransparency = 0.5
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.OutlineTransparency = 0
+    
+    -- 创建血量显示
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "ESP_Billboard"
+    billboard.Adornee = character:WaitForChild("Head")
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = character
+    
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Name = "ESP_Name"
+    nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    nameLabel.Position = UDim2.new(0, 0, 0, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = player.Name
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLabel.TextScaled = true
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.Parent = billboard
+    
+    local healthLabel = Instance.new("TextLabel")
+    healthLabel.Name = "ESP_Health"
+    healthLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    healthLabel.Position = UDim2.new(0, 0, 0.5, 0)
+    healthLabel.BackgroundTransparency = 1
+    healthLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    healthLabel.TextScaled = true
+    healthLabel.Font = Enum.Font.Gotham
+    healthLabel.Parent = billboard
+    
+    -- 更新血量
+    local function updateHealth()
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            healthLabel.Text = "HP: " .. math.floor(humanoid.Health) .. "/" .. math.floor(humanoid.MaxHealth)
+        end
+    end
+    
+    local healthConnection
+    if character:FindFirstChildOfClass("Humanoid") then
+        updateHealth()
+        healthConnection = character:FindFirstChildOfClass("Humanoid").HealthChanged:Connect(updateHealth)
+    end
+    
+    return {highlight = highlight, billboard = billboard, healthConnection = healthConnection}
+end
+
+-- 清除ESP函数
+local function clearESP()
+    for player, espData in pairs(_G.ESPConnections) do
+        if espData.healthConnection then
+            espData.healthConnection:Disconnect()
+        end
+        if espData.highlight and espData.highlight.Parent then
+            espData.highlight:Destroy()
+        end
+        if espData.billboard and espData.billboard.Parent then
+            espData.billboard:Destroy()
+        end
+    end
+    _G.ESPConnections = {}
+end
+
+-- 更新ESP函数
+local function updateESP()
+    clearESP()
+    
+    for _, player in pairs(game.Players:GetPlayers()) do
+        if player ~= game.Players.LocalPlayer then
+            _G.ESPConnections[player] = createESP(player)
+        end
+    end
+end
+
+ESPSection:Toggle({
+    Title = "启用透视",
+    Desc = "显示玩家框架、血量和名字",
+    Default = false,
+    Callback = function(state)
+        _G.ESPEnabled = state
+        if state then
+            updateESP()
+            
+            -- 监听新玩家加入
+            _G.PlayerAddedConnection = game.Players.PlayerAdded:Connect(function(player)
+                wait(2) -- 等待玩家角色加载
+                _G.ESPConnections[player] = createESP(player)
+            end)
+            
+            -- 监听玩家离开
+            _G.PlayerRemovingConnection = game.Players.PlayerRemoving:Connect(function(player)
+                if _G.ESPConnections[player] then
+                    if _G.ESPConnections[player].healthConnection then
+                        _G.ESPConnections[player].healthConnection:Disconnect()
+                    end
+                    if _G.ESPConnections[player].highlight and _G.ESPConnections[player].highlight.Parent then
+                        _G.ESPConnections[player].highlight:Destroy()
+                    end
+                    if _G.ESPConnections[player].billboard and _G.ESPConnections[player].billboard.Parent then
+                        _G.ESPConnections[player].billboard:Destroy()
+                    end
+                    _G.ESPConnections[player] = nil
+                end
+            end)
+            
+            WindUI:Notify({
+                Title = "透视功能",
+                Content = "透视功能已启用",
+                Icon = "eye",
+            })
+        else
+            clearESP()
+            
+            if _G.PlayerAddedConnection then
+                _G.PlayerAddedConnection:Disconnect()
+                _G.PlayerAddedConnection = nil
+            end
+            
+            if _G.PlayerRemovingConnection then
+                _G.PlayerRemovingConnection:Disconnect()
+                _G.PlayerRemovingConnection = nil
+            end
+            
+            WindUI:Notify({
+                Title = "透视功能",
+                Content = "透视功能已禁用",
+                Icon = "eye-off",
+            })
+        end
+    end
+})
+
+ESPSection:Button({
+    Title = "刷新ESP",
+    Desc = "重新加载所有玩家ESP",
+    Icon = "refresh-cw",
+    Color = Color3.fromHex("#305dff"),
+    Callback = function()
+        if _G.ESPEnabled then
+            updateESP()
+            WindUI:Notify({
+                Title = "透视功能",
+                Content = "ESP已刷新",
+                Icon = "refresh-cw",
+            })
+        else
+            WindUI:Notify({
+                Title = "透视功能",
+                Content = "请先启用透视功能",
+                Icon = "alert-circle",
+            })
+        end
+    end
+})
+
+-- 视觉设置部分
+local VisualSection = GeneralTab:Section({
+    Title = "视觉设置",
+})
+
+VisualSection:Toggle({
+    Title = "夜视模式",
+    Desc = "启用夜间视野",
+    Default = false,
+    Callback = function(state)
+        local Lighting = game:GetService("Lighting")
+        if state then
+            Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+            Lighting.Brightness = 2
+            Lighting.ClockTime = 14
+            WindUI:Notify({
+                Title = "夜视模式",
+                Content = "夜视模式已启用",
+                Icon = "moon",
+            })
+        else
+            Lighting.Ambient = Color3.fromRGB(0, 0, 0)
+            Lighting.Brightness = 1
+            WindUI:Notify({
+                Title = "夜视模式",
+                Content = "夜视模式已禁用",
+                Icon = "sun",
+            })
+        end
+    end
+})
+
+VisualSection:Toggle({
+    Title = "锁定当前视角",
+    Desc = "锁定相机视角",
+    Default = false,
+    Callback = function(state)
+        local Camera = workspace.CurrentCamera
+        if state then
+            _G.SavedCameraCFrame = Camera.CFrame
+            Camera.CameraType = Enum.CameraType.Scriptable
+            Camera.CFrame = _G.SavedCameraCFrame
+            WindUI:Notify({
+                Title = "视角锁定",
+                Content = "视角已锁定",
+                Icon = "camera",
+            })
+        else
+            Camera.CameraType = Enum.CameraType.Custom
+            WindUI:Notify({
+                Title = "视角锁定",
+                Content = "视角已解锁",
+                Icon = "camera-off",
+            })
+        end
+    end
+})
+
+-- 通用瞄准锁功能
+local AimSection = GeneralTab:Section({
+    Title = "瞄准功能",
+})
+
+AimSection:Button({
+    Title = "通用瞄准锁",
+    Desc = "加载通用瞄准锁脚本",
+    Icon = "crosshair",
+    Color = Color3.fromHex("#FF3040"),
+    Callback = function()
+        -- 加载通用瞄准锁脚本
+        local Aimbot = loadstring(game:HttpGet("https://raw.githubusercontent.com/Exunys/Aimbot-V3/main/src/Aimbot.lua"))()
+        Aimbot.Load()
+        WindUI:Notify({
+            Title = "通用瞄准锁",
+            Content = "瞄准锁已加载！",
+            Icon = "crosshair",
+        })
+    end
+})
+
+-- 获取管理员权限
+local AdminSection = GeneralTab:Section({
+    Title = "管理员权限",
+})
+
+AdminSection:Button({
+    Title = "获取管理员权限",
+    Desc = "不知道......",
+    Icon = "shield",
+    Color = Color3.fromHex("#FF8C00"),
+    Callback = function()
+        -- 播放成功音效
+        local sound = Instance.new("Sound")
+        sound.SoundId = "rbxassetid://1839246711"
+        sound.Parent = game:GetService("Workspace")
+        sound:Play()
+        
+        WindUI:Notify({
+            Title = "？？？",
+            Content = "不知道...",
+            Icon = "shield",
+        })
+        
+        -- 这里可以添加获取管理员权限的实际代码
+        -- 由于不同游戏的管理员系统不同，这里只提供音效和通知
+    end
+})
+
+-- 服务器控制
+local ServerSection = GeneralTab:Section({
+    Title = "服务器",
+})
+
+ServerSection:Button({
+    Title = "踢出服务器",
+    Desc = "不知道",
+    Icon = "log-out",
+    Color = Color3.fromHex("#FF3040"),
+    Callback = function()
+        -- 静默退出游戏
+        game.Players.LocalPlayer:Kick()
+    end
+})
+
+ServerSection:Button({
+    Title = "重新加入服务器",
+    Desc = "不知道",
+    Icon = "refresh-cw",
+    Color = Color3.fromHex("#30FF6A"),
+    Callback = function()
+        WindUI:Notify({
+            Title = "重新加入服务器",
+            Content = "正在重新加入服务器...",
+            Icon = "refresh-cw",
+        })
+        -- 重新加入的逻辑需要游戏特定的实现
+    end
+})
+
+-- 自杀功能
+local SuicideSection = GeneralTab:Section({
+    Title = "其他功能",
+})
+
+SuicideSection:Button({
+    Title = "自杀",
+    Desc = "随便乱写的",
+    Icon = "skull",
+    Color = Color3.fromHex("#8B0000"),
+    Callback = function()
+        -- 加载自杀脚本
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/maninffg/114514/refs/heads/main/kill.lua"))()
+        WindUI:Notify({
+            Title = "自杀",
+            Content = "自杀功能已激活",
+            Icon = "skull",
+        })
+    end
+})
+
+-- 飞行模式 - 使用提供的加载脚本
+local FlySection = GeneralTab:Section({
+    Title = "飞行模式",
+})
+
+FlySection:Button({
+    Title = "加载飞行模式",
+    Icon = "feather",
+    Color = Color3.fromHex("#305dff"),
+    Callback = function()
+        -- 使用提供的飞行模式加载脚本
+        loadstring("\108\111\97\100\115\116\114\105\110\103\40\103\97\109\101\58\72\116\116\112\71\101\116\40\34\104\116\116\112\115\58\47\47\114\97\119\46\103\105\116\104\117\98\117\115\101\114\99\111\110\116\101\110\116\46\99\111\109\47\109\97\110\105\110\102\102\103\47\49\49\52\53\49\52\47\114\101\102\115\47\104\101\97\100\115\47\109\97\105\110\47\102\108\121\46\108\117\97\34\41\41\40\41")()
+        WindUI:Notify({
+            Title = "飞行模式",
+            Content = "普通飞行已加载",
+            Icon = "feather",
+        })
+    end
+})
+
+-- 自动聊天功能部分
+local AutoChatSection = GeneralTab:Section({
+    Title = "自动聊天",
+})
+
+AutoChatSection:Input({
+    Title = "聊天内容",
+    Desc = "输入要自动发送的消息",
+    Type = "Input",
+    Placeholder = "请输入聊天内容...",
+    Callback = function(input)
+        _G.CustomChatMessage = input
+    end
+})
+
+AutoChatSection:Slider({
+    Title = "发送速度",
+    Desc = "消息发送间隔(秒)",
+    Step = 1,
+    Value = {
+        Min = 1,
+        Max = 10,
+        Default = 5,
+    },
+    Callback = function(value)
+        _G.ChatInterval = value
+    end
+})
+
+AutoChatSection:Button({
+    Title = "开始自动聊天",
+    Icon = "message-circle",
+    Color = Color3.fromHex("#30FF6A"),
+    Callback = function()
+        if not _G.CustomChatMessage or _G.CustomChatMessage == "" then
+            WindUI:Notify({
+                Title = "错误",
+                Content = "请先输入聊天内容",
+                Icon = "alert-circle",
+            })
+            return
+        end
+        
+        if _G.AutoChatEnabled then
+            WindUI:Notify({
+                Title = "提示",
+                Content = "自动聊天已经在运行中",
+                Icon = "info",
+            })
+            return
+        end
+        
+        _G.AutoChatEnabled = true
+        
+        WindUI:Notify({
+            Title = "自动聊天",
+            Content = "已开始自动发送消息",
+            Icon = "message-circle",
+        })
+        
+        -- 开始自动发送消息
+        _G.ChatConnection = game:GetService("RunService").Heartbeat:Connect(function()
+            if _G.AutoChatEnabled then
+                local success, err = pcall(function()
+                    game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(_G.CustomChatMessage, "All")
+                end)
+                
+                if not success then
+                    print("自动聊天错误: " .. err)
+                    _G.AutoChatEnabled = false
+                    if _G.ChatConnection then
+                        _G.ChatConnection:Disconnect()
+                        _G.ChatConnection = nil
+                    end
+                end
+                
+                wait(_G.ChatInterval)
+            else
+                if _G.ChatConnection then
+                    _G.ChatConnection:Disconnect()
+                    _G.ChatConnection = nil
+                end
+            end
+        end)
+    end
+})
+
+AutoChatSection:Button({
+    Title = "停止自动聊天",
+    Icon = "square",
+    Color = Color3.fromHex("#FF3040"),
+    Callback = function()
+        _G.AutoChatEnabled = false
+        if _G.ChatConnection then
+            _G.ChatConnection:Disconnect()
+            _G.ChatConnection = nil
+        end
+        WindUI:Notify({
+            Title = "自动聊天",
+            Content = "已停止自动发送消息",
+            Icon = "square",
+        })
+    end
+})
+
+-- 音乐功能部分
+local MusicSection = GeneralTab:Section({
+    Title = "音乐功能",
+})
+
+-- 音乐ID输入框
+local MusicIdInput = MusicSection:Input({
+    Title = "音乐ID",
+    Desc = "输入Roblox音乐ID",
+    Type = "Input",
+    Placeholder = "输入音乐ID...",
+    Callback = function(input)
+        _G.MusicId = input
+    end
+})
+
+-- 播放音乐函数
+local function playMusic(musicId)
+    -- 停止当前播放的音乐
+    if _G.CurrentSound then
+        _G.CurrentSound:Stop()
+        _G.CurrentSound:Destroy()
+        _G.CurrentSound = nil
+    end
+    
+    -- 创建新的音乐
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://" .. musicId
+    sound.Parent = game:GetService("Workspace")
+    sound.Looped = true
+    sound.Volume = _G.SoundVolume or 0.5
+    sound:Play()
+    
+    _G.CurrentSound = sound
+    WindUI:Notify({
+        Title = "音乐播放",
+        Content = "正在播放音乐 ID: " .. musicId,
+        Icon = "music",
+    })
+end
+
+-- 停止音乐函数
+local function stopMusic()
+    if _G.CurrentSound then
+        _G.CurrentSound:Stop()
+        _G.CurrentSound:Destroy()
+        _G.CurrentSound = nil
+        WindUI:Notify({
+            Title = "音乐播放",
+            Content = "音乐已停止",
+            Icon = "music",
+        })
+    else
+        WindUI:Notify({
+            Title = "音乐播放",
+            Content = "没有正在播放的音乐",
+            Icon = "music",
+        })
+    end
+end
+
+-- 播放按钮
+MusicSection:Button({
+    Title = "播放音乐",
+    Desc = "播放输入的音乐ID",
+    Icon = "play",
+    Color = Color3.fromHex("#30FF6A"),
+    Callback = function()
+        if not _G.MusicId or _G.MusicId == "" then
+            WindUI:Notify({
+                Title = "错误",
+                Content = "请先输入音乐ID",
+                Icon = "alert-circle",
+            })
+            return
+        end
+        
+        playMusic(_G.MusicId)
+    end
+})
+
+-- 停止按钮
+MusicSection:Button({
+    Title = "停止音乐",
+    Desc = "停止当前播放的音乐",
+    Icon = "square",
+    Color = Color3.fromHex("#FF3040"),
+    Callback = function()
+        stopMusic()
+    end
+})
+
+-- 预设音乐下拉菜单
+local PresetMusicSection = GeneralTab:Section({
+    Title = "播放音乐ID",
+})
+
+-- 预设音乐ID列表
+local presetMusicIds = {
+    {Title = "成都超人", Desc = "音乐ID: 122111289213283", Icon = "music"},
+    {Title = "无敌少侠", Desc = "音乐ID: 107424491541808", Icon = "music"},
+    {Title = "不知道名字的音乐", Desc = "音乐ID: 16190782181", Icon = "music"},
+    {Title = "压力", Desc = "音乐ID: 74856563303589", Icon = "music"},
+    {Title = "警报", Desc = "音乐ID: 856598599", Icon = "music"},
+    {Title = "黑客播放音乐", Desc = "音乐ID: 1839246711", Icon = "music"},
+    {Title = "音波", Desc = "音乐ID: 4611865583", Icon = "music"}
+}
+
+-- 创建下拉菜单
+PresetMusicSection:Dropdown({
+    Title = "选择预设音乐",
+    Desc = "从列表中选择预设音乐",
+    Values = presetMusicIds,
+    Callback = function(option)
+        -- 根据选择的选项播放对应的音乐
+        local musicIds = {
+            ["成都超人"] = "122111289213283",
+            ["无敌少侠"] = "107424491541808",
+            ["不知道名字的音乐"] = "16190782181",
+            ["压力"] = "74856563303589",
+            ["警报"] = "856598599",
+            ["黑客播放音乐"] = "1839246711",
+            ["音波"] = "4611865583"
+        }
+        
+        if musicIds[option.Title] then
+            playMusic(musicIds[option.Title])
+        end
+    end
+})
+
+-- 传送玩家标签页
+local TeleportTab = Window:Tab({
+    Title = "传送玩家",
+    Icon = "navigation",
+})
+
+-- 获取当前服务器玩家列表的函数
+local function getPlayerList()
+    local players = game:GetService("Players"):GetPlayers()
+    local playerOptions = {}
+    for _, player in ipairs(players) do
+        if player ~= game.Players.LocalPlayer then
+            table.insert(playerOptions, {
+                Title = player.Name,
+                Icon = "user"
+            })
+        end
+    end
+    return playerOptions
+end
+
+-- 传送功能部分
+local TeleportSection = TeleportTab:Section({
+    Title = "传送功能",
+})
+
+TeleportSection:Input({
+    Title = "玩家名称",
+    Desc = "输入要传送的玩家名字",
+    Type = "Input",
+    Placeholder = "输入玩家名称...",
+    Callback = function(input)
+        _G.TargetPlayerName = input
+    end
+})
+
+TeleportSection:Dropdown({
+    Title = "选择玩家",
+    Desc = "从列表中选择玩家",
+    Values = getPlayerList(),
+    Callback = function(option)
+        _G.TargetPlayerName = option.Title
+        WindUI:Notify({
+            Title = "玩家选择",
+            Content = "已选择玩家: " .. option.Title,
+            Icon = "user",
+        })
+    end
+})
+
+TeleportSection:Button({
+    Title = "刷新玩家列表",
+    Icon = "refresh-cw",
+    Callback = function()
+        local playerList = getPlayerList()
+        WindUI:Notify({
+            Title = "玩家列表",
+            Content = "已刷新玩家列表",
+            Icon = "refresh-cw",
+        })
+    end
+})
+
+TeleportSection:Button({
+    Title = "传送到玩家",
+    Icon = "navigation",
+    Color = Color3.fromHex("#305dff"),
+    Callback = function()
+        if not _G.TargetPlayerName or _G.TargetPlayerName == "" then
+            WindUI:Notify({
+                Title = "错误",
+                Content = "请先输入或选择玩家名字",
+                Icon = "alert-circle",
+            })
+            return
+        end
+        
+        local targetPlayer = nil
+        for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
+            if string.lower(player.Name) == string.lower(_G.TargetPlayerName) then
+                targetPlayer = player
+                break
+            end
+        end
+        
+        if not targetPlayer then
+            WindUI:Notify({
+                Title = "错误",
+                Content = "找不到玩家: " .. _G.TargetPlayerName,
+                Icon = "alert-circle",
+            })
+            return
+        end
+        
+        local character = game.Players.LocalPlayer.Character
+        local targetCharacter = targetPlayer.Character
+        
+        if not character or not targetCharacter then
+            WindUI:Notify({
+                Title = "错误",
+                Content = "玩家角色不存在",
+                Icon = "alert-circle",
+            })
+            return
+        end
+        
+        local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+        local targetRootPart = targetCharacter:FindFirstChild("HumanoidRootPart")
+        
+        if not humanoidRootPart or not targetRootPart then
+            WindUI:Notify({
+                Title = "错误",
+                Content = "无法找到角色根部位",
+                Icon = "alert-circle",
+            })
+            return
+        end
+        
+        -- 执行传送
+        local success, errorMessage = pcall(function()
+            humanoidRootPart.CFrame = targetRootPart.CFrame + Vector3.new(0, 3, 0)
+        end)
+        
+        if success then
+            WindUI:Notify({
+                Title = "传送成功",
+                Content = "已传送到玩家: " .. targetPlayer.Name,
+                Icon = "check-circle",
+            })
+        else
+            WindUI:Notify({
+                Title = "传送失败",
+                Content = "错误: " .. tostring(errorMessage),
+                Icon = "x-circle",
+            })
+        end
+    end
+})
+
+-- FE标签页
+local FETab = Window:Tab({
+    Title = "FE",
+    Icon = "zap",
+})
+
+-- FE脚本部分
+local FESection = FETab:Section({
+    Title = "FE脚本",
+})
+
+FESection:Button({
+    Title = "SCP-096",
+    Desc = "加载SCP-096脚本",
+    Icon = "alert-triangle",
+    Color = Color3.fromHex("#FF3040"),
+    Callback = function()
+        loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-FE-SCP-096-36948"))()
+        WindUI:Notify({
+            Title = "FE脚本",
+            Content = "SCP-096脚本已加载",
+            Icon = "alert-triangle",
+        })
+    end
+})
+
+FESection:Button({
+    Title = "无敌少侠飞行",
+    Desc = "加载无敌少侠飞行脚本",
+    Icon = "feather",
+    Color = Color3.fromHex("#30FF6A"),
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/396abc/Script/refs/heads/main/MobileFly.lua"))()
+        WindUI:Notify({
+            Title = "FE脚本",
+            Content = "无敌少侠飞行脚本已加载",
+            Icon = "feather",
+        })
+    end
+})
+
+FESection:Button({
+    Title = "无敌少侠飞行R15",
+    Desc = "加载无敌少侠飞行R15脚本",
+    Icon = "feather",
+    Color = Color3.fromHex("#305dff"),
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/396abc/Script/refs/heads/main/FlyR15.lua"))()
+        WindUI:Notify({
+            Title = "FE脚本",
+            Content = "无敌少侠飞行R15脚本已加载",
+            Icon = "feather",
+        })
+    end
+})
+
+-- FE-IY指令
+FESection:Button({
+    Title = "FE-IY指令",
+    Desc = "加载Infinite Yield FE指令",
+    Icon = "terminal",
+    Color = Color3.fromHex("#FF30A5"),
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+        WindUI:Notify({
+            Title = "FE-IY指令",
+            Content = "Infinite Yield FE指令已加载",
+            Icon = "terminal",
+        })
+    end
+})
+
+-- FE-封禁之锤
+FESection:Button({
+    Title = "FE-封禁之锤",
+    Desc = "加载封禁之锤脚本",
+    Icon = "hammer",
+    Color = Color3.fromHex("#8B0000"),
+    Callback = function()
+        loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-FE-Ban-Hammer-10852"))()
+        WindUI:Notify({
+            Title = "FE脚本",
+            Content = "封禁之锤脚本已加载",
+            Icon = "hammer",
+        })
+    end
+})
+
+-- 幽灵中心
+FESection:Button({
+    Title = "幽灵中心",
+    Desc = "需要卡密",
+    Icon = "ghost",
+    Color = Color3.fromHex("#9370DB"),
+    Callback = function()
+        loadstring(game:HttpGet('https://raw.githubusercontent.com/GhostPlayer352/Test4/main/GhostHub'))()
+        WindUI:Notify({
+            Title = "FE脚本",
+            Content = "幽灵中心脚本已加载",
+            Icon = "ghost",
+        })
+    end
+})
+
+-- FE-炽天使脚本
+FESection:Button({
+    Title = "FE-炽天使脚本",
+    Desc = "加载炽天使脚本",
+    Icon = "flame",
+    Color = Color3.fromHex("#FF4500"),
+    Callback = function()
+        loadstring(game:HttpGet("https://pastefy.app/59mJGQGe/raw"))()
+        WindUI:Notify({
+            Title = "FE脚本",
+            Content = "炽天使脚本已加载",
+            Icon = "flame",
+        })
+    end
+})
+
+-- FE-官方认证v2
+FESection:Button({
+    Title = "FE-官方认证v2",
+    Desc = "加载官方认证v2脚本",
+    Icon = "badge-check",
+    Color = Color3.fromHex("#00FF00"),
+    Callback = function()
+        loadstring(game:HttpGet("https://pastebin.com/raw/qJwH9964"))()
+        WindUI:Notify({
+            Title = "FE脚本",
+            Content = "官方认证v2脚本已加载",
+            Icon = "badge-check",
+        })
+    end
+})
+
+-- 不知道名字FE脚本
+FESection:Button({
+    Title = "RobHub脚本",
+    Desc = "加载RobHub脚本",
+    Icon = "package",
+    Color = Color3.fromHex("#FFD700"),
+    Callback = function()
+        loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-RobHub-55801"))()
+        WindUI:Notify({
+            Title = "FE脚本",
+            Content = "RobHub脚本已加载",
+            Icon = "package",
+        })
+    end
+})
+
+-- 植物大战脑红标签页
+local PVBTab = Window:Tab({
+    Title = "植物大战脑红",
+    Icon = "flower",
+})
+
+-- 植物大战脑红脚本部分
+local PVBSection = PVBTab:Section({
+    Title = "植物大战脑红脚本",
+})
+
+PVBSection:Paragraph({
+    Title = "注意",
+    Desc = "需要卡密",
+})
+
+PVBSection:Button({
+    Title = "加载植物大战脑红脚本",
+    Desc = "不知道这是什么脚本",
+    Icon = "flower",
+    Color = Color3.fromHex("#FF30A5"),
+    Callback = function()
+        -- 加载植物大战脑红脚本（未汉化）
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/ScriptHub-dev0/PVB/refs/heads/main/SCRIPT/LOADER"))()
+        WindUI:Notify({
+            Title = "植物大战脑红",
+            Content = "植物大战脑红脚本已加载",
+            Icon = "flower",
+        })
+    end
+})
+
+-- 忍者传奇标签页
+local NinjaTab = Window:Tab({
+    Title = "忍者传奇",
+    Icon = "swords",
+})
+
+-- 忍者传奇脚本部分
+local NinjaSection = NinjaTab:Section({
+    Title = "忍者传奇脚本",
+})
+
+NinjaSection:Paragraph({
+    Title = "脚本中心/忍者传奇",
+    Desc = "加载脚本中心的忍者传奇脚本",
+})
+
+NinjaSection:Button({
+    Title = "加载脚本中心/忍者传奇",
+    Desc = "加载脚本中心的忍者传奇脚本",
+    Icon = "swords",
+    Color = Color3.fromHex("#FF8C00"),
+    Callback = function()
+        -- 加载忍者传奇脚本
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/maninffg/114514/refs/heads/main/%E5%BF%8D%E8%80%85%E4%BC%A0%E5%A5%87.lua"))()
+        WindUI:Notify({
+            Title = "忍者传奇",
+            Content = "脚本中心忍者传奇已加载",
+            Icon = "swords",
+        })
+    end
+})
+
+-- 森林中的99夜标签页
+local Forest99Tab = Window:Tab({
+    Title = "森林中的99夜",
+    Icon = "tree",
+})
+
+-- 99夜脚本部分
+local Forest99Section = Forest99Tab:Section({
+    Title = "99夜脚本",
+})
+
+Forest99Section:Button({
+    Title = "99夜汉化",
+    Desc = "加载汉化版99夜脚本",
+    Icon = "tree",
+    Color = Color3.fromHex("#30FF6A"),
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/ke9460394-dot/ugik/refs/heads/main/99Cps%20natural.lua"))()
+        WindUI:Notify({
+            Title = "99夜汉化",
+            Content = "99夜汉化脚本已加载",
+            Icon = "tree",
+        })
+    end
+})
+
+Forest99Section:Paragraph({
+    Title = "虚空99夜",
+    Desc = "注意：不知道",
+})
+
+Forest99Section:Button({
+    Title = "虚空99夜",
+    Desc = "找到第一个按钮往下滑调成中文",
+    Icon = "moon",
+    Color = Color3.fromHex("#9370DB"),
+    Callback = function()
+        loadstring(game:HttpGet("https://rawscripts.net/raw/99-Nights-in-the-Forest-99-NITF-KEYLESS-SCRIPT-48729"))()
+        WindUI:Notify({
+            Title = "虚空99夜",
+            Content = "虚空99夜脚本已加载",
+            Icon = "moon",
+        })
+    end
+})
+
+-- 偷走脑红标签页
+local StealBrainTab = Window:Tab({
+    Title = "偷走脑红",
+    Icon = "brain",
+})
+
+-- 偷走脑红脚本部分
+local StealBrainSection = StealBrainTab:Section({
+    Title = "偷走脑红脚本",
+})
+
+StealBrainSection:Button({
+    Title = "偷走脑红脚本",
+    Desc = "加载偷走脑红脚本",
+    Icon = "brain",
+    Color = Color3.fromHex("#FF1493"),
+    Callback = function()
+        loadstring(game:HttpGet("https://pastefy.app/o9mKKAda/raw"))()
+        WindUI:Notify({
+            Title = "偷走脑红",
+            Content = "偷走脑红脚本已加载",
+            Icon = "brain",
+        })
+    end
+})
+
+-- ac6标签页
+local AC6Tab = Window:Tab({
+    Title = "ac6",
+    Icon = "music",
+})
+
+-- ac6脚本部分
+local AC6Section = AC6Tab:Section({
+    Title = "ac6脚本",
+})
+
+AC6Section:Button({
+    Title = "ac6漏洞音乐",
+    Desc = "加载ac6漏洞音乐脚本",
+    Icon = "music",
+    Color = Color3.fromHex("#1E90FF"),
+    Callback = function()
+        loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-FE-Ac6-Music-Vulnerability-25536"))()
+        WindUI:Notify({
+            Title = "ac6漏洞音乐",
+            Content = "ac6漏洞音乐脚本已加载",
+            Icon = "music",
+        })
+    end
+})
+
+-- 终极战场标签页
+local UltimateBattleTab = Window:Tab({
+    Title = "终极战场",
+    Icon = "target",
+})
+
+-- 终极战场脚本部分
+local UltimateBattleSection = UltimateBattleTab:Section({
+    Title = "终极战场脚本",
+})
+
+UltimateBattleSection:Button({
+    Title = "终极战场脚本",
+    Desc = "加载终极战场脚本",
+    Icon = "target",
+    Color = Color3.fromHex("#DC143C"),
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/ke9460394-dot/ugik/refs/heads/main/终极战场自动换服杀戮.lua"))()
+        WindUI:Notify({
+            Title = "终极战场",
+            Content = "终极战场脚本已加载",
+            Icon = "target",
+        })
+    end
+})
+
+-- 最强战场标签页
+local StrongestBattleTab = Window:Tab({
+    Title = "最强战场",
+    Icon = "award",
+})
+
+-- 最强战场脚本部分
+local StrongestBattleSection = StrongestBattleTab:Section({
+    Title = "最强战场脚本",
+})
+
+StrongestBattleSection:Paragraph({
+    Title = "最强战场脚本",
+    Desc = "依旧不知道",
+})
+
+StrongestBattleSection:Button({
+    Title = "最强战场脚本",
+    Desc = "加载最强战场脚本",
+    Icon = "award",
+    Color = Color3.fromHex("#FFD700"),
+    Callback = function()
+        getgenv().Cutscene = false -- 设置过场动画
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/LolnotaKid/SCRIPTSBYVEUX/refs/heads/main/BoombasticLol.lua.txt"))()
+        WindUI:Notify({
+            Title = "最强战场",
+            Content = "最强战场脚本已加载",
+            Icon = "award",
+        })
+    end
+})
+
+-- 进入服务器标签页
+local JoinServerTab = Window:Tab({
+    Title = "进入服务器",
+    Icon = "server",
+})
+
+-- 服务器列表部分
+local JoinServerSection = JoinServerTab:Section({
+    Title = "服务器列表",
+})
+
+JoinServerSection:Button({
+    Title = "自然灾害模拟器",
+    Desc = "加入...",
+    Icon = "wind",
+    Color = Color3.fromHex("#30FF6A"),
+    Callback = function()
+        WindUI:Notify({
+            Title = "服务器",
+            Content = "正在尝试加入自然灾害模拟器...",
+            Icon = "wind",
+        })
+        -- 这里可以添加加入服务器的实际代码
+    end
+})
+
+JoinServerSection:Button({
+    Title = "忍者传奇",
+    Desc = "加入...",
+    Icon = "swords",
+    Color = Color3.fromHex("#FF8C00"),
+    Callback = function()
+        WindUI:Notify({
+            Title = "服务器",
+            Content = "正在尝试加入忍者传奇...",
+            Icon = "swords",
+        })
+        -- 这里可以添加加入服务器的实际代码
+    end
+})
+
+JoinServerSection:Button({
+    Title = "森林中的99夜",
+    Desc = "加入...",
+    Icon = "tree",
+    Color = Color3.fromHex("#228B22"),
+    Callback = function()
+        WindUI:Notify({
+            Title = "服务器",
+            Content = "正在尝试加入森林中的99夜...",
+            Icon = "tree",
+        })
+        -- 这里可以添加加入服务器的实际代码
+    end
+})
+
+-- 自然灾害标签页
+local NaturalDisasterTab = Window:Tab({
+    Title = "自然灾害",
+    Icon = "wind",
+})
+
+-- 自然灾害部分
+local NaturalDisasterSection = NaturalDisasterTab:Section({
+    Title = "自然灾害模拟器",
+})
+
+NaturalDisasterSection:Paragraph({
+    Title = "请期待...",
+    Desc = "脚本中心忍者传奇正在开发中",
+})
+
+-- 关于标签页
+local AboutTab = Window:Tab({
+    Title = "关于",
+    Icon = "info",
+})
+
+-- 个人信息部分
+local ProfileSection = AboutTab:Section({
+    Title = "开发者信息",
+})
+
+ProfileSection:Paragraph({
+    Title = "脚本中心",
+    Desc = "不知道",
+    Image = "https://via.placeholder.com/100", -- 替换为您的头像URL
+})
+
+-- 北京时间显示
+local TimeSection = AboutTab:Section({
+    Title = "时间信息",
+})
+
+-- 记录游戏开始时间
+local gameStartTime = os.time()
+
+-- 使用Paragraph元素显示时间信息
+local TimeDisplay = TimeSection:Paragraph({
+    Title = "时间信息",
+    Desc = "正在加载时间信息...",
+})
+
+-- 更新时间显示的函数
+local function updateTimeDisplay()
+    local currentTime = os.time()
+    
+    -- 计算北京时间 (UTC+8)
+    local beijingTime = os.date("!%Y-%m-%d %H:%M:%S", currentTime + 8 * 60 * 60)
+    
+    -- 计算年月日
+    local year = os.date("!%Y", currentTime + 8 * 60 * 60)
+    local month = os.date("!%m", currentTime + 8 * 60 * 60)
+    local day = os.date("!%d", currentTime + 8 * 60 * 60)
+    local dateStr = year .. "年" .. month .. "月" .. day .. "日"
+    
+    -- 计算跨年倒计时
+    local nextYear = tonumber(year) + 1
+    local newYearTime = os.time({year = nextYear, month = 1, day = 1, hour = 0, min = 0, sec = 0})
+    local timeUntilNewYear = newYearTime - currentTime - 8 * 60 * 60
+    
+    local countdownStr
+    if timeUntilNewYear > 0 then
+        local days = math.floor(timeUntilNewYear / (24 * 60 * 60))
+        local hours = math.floor((timeUntilNewYear % (24 * 60 * 60)) / (60 * 60))
+        local minutes = math.floor((timeUntilNewYear % (60 * 60)) / 60)
+        local seconds = math.floor(timeUntilNewYear % 60)
+        countdownStr = days .. "天 " .. hours .. "小时 " .. minutes .. "分钟 " .. seconds .. "秒"
+    else
+        countdownStr = "已过新年"
+    end
+    
+    -- 计算游玩时间
+    local playTime = currentTime - gameStartTime
+    local playHours = math.floor(playTime / 3600)
+    local playMinutes = math.floor((playTime % 3600) / 60)
+    local playSeconds = math.floor(playTime % 60)
+    local playTimeStr = string.format("%02d:%02d:%02d", playHours, playMinutes, playSeconds)
+    
+    -- 更新显示
+    local timeInfo = "北京时间: " .. beijingTime .. "\n" ..
+                    "年月日: " .. dateStr .. "\n" ..
+                    "跨年倒计时: " .. countdownStr .. "\n" ..
+                    "游玩时间: " .. playTimeStr
+    
+    TimeDisplay:Set({
+        Title = "实时时间信息",
+        Desc = timeInfo
+    })
+end
+
+-- 启动时间更新循环
+local timeUpdateConnection
+timeUpdateConnection = game:GetService("RunService").Heartbeat:Connect(function()
+    updateTimeDisplay()
+end)
+
+-- 其他脚本部分
+local OtherScriptsSection = AboutTab:Section({
+    Title = "其他脚本",
+})
+
+-- 初始化默认音量
+_G.SoundVolume = 0.5
+
+OtherScriptsSection:Button({
+    Title = "脚本中心",
+    Desc = "加载情云脚本中心",
+    Icon = "package",
+    Callback = function()
+        loadstring(utf8.char((function() return table.unpack({108,111,97,100,115,116,114,105,110,103,40,103,97,109,101,58,72,116,116,112,71,101,116,40,34,104,116,116,112,115,58,47,47,114,97,119,46,103,105,116,104,117,98,117,115,101,114,99,111,110,116,101,110,116,46,99,111,109,47,67,104,105,110,97,81,89,47,45,47,109,97,105,110,47,37,69,54,37,56,51,37,56,53,37,69,52,37,66,65,37,57,49,34,41,41,40,41})end)()))()
+        WindUI:Notify({
+            Title = "脚本中心",
+            Content = "脚本中心已加载",
+            Icon = "package",
+        })
+    end
+})
+
+OtherScriptsSection:Button({
+    Title = "皮脚本",
+    Desc = "加载皮脚本",
+    Icon = "code",
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/xiaopi77/xiaopi77/main/QQ1002100032-Roblox-Pi-script.lua"))()
+        WindUI:Notify({
+            Title = "皮脚本",
+            Content = "皮脚本已加载",
+            Icon = "code",
+        })
+    end
+})
+
+OtherScriptsSection:Button({
+    Title = "导管中心",
+    Desc = "加载导管中心脚本",
+    Icon = "box",
+    Callback = function()
+        loadstring("\108\111\97\100\115\116\114\105\110\103\40\103\97\109\101\58\72\116\116\112\71\101\116\40\34\104\116\116\112\115\58\47\47\114\97\119,46\103\105\116\104\117\98\117\115\101\114\99\111\110\116\101\110\116,46\99\111\109\47\117\115\101\114\97\110\101\119\114\102\102\47\114\111\98\108\111\120\45\47\109\97\105\110\47\37\69\54\37\57\68\37\65\49\37\69\54\37\65\67\37\66\69\37\69\53\37\56\68\37\56\70\37\69\56\37\65\69\37\65\69\34\41\41\40\41\10")()
+        WindUI:Notify({
+            Title = "导管中心",
+            Content = "导管中心脚本已加载",
+            Icon = "box",
+        })
+    end
+})
+
+OtherScriptsSection:Button({
+    Title = "沙脚本",
+    Desc = "加载沙脚本",
+    Icon = "wind",
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/114514lzkill/ShaHUB/refs/heads/main/ShaHUB"))()
+        WindUI:Notify({
+            Title = "沙脚本",
+            Content = "沙脚本已加载",
+            Icon = "wind",
+        })
+    end
+})
+
+OtherScriptsSection:Button({
+    Title = "WTB脚本",
+    Desc = "？？？",
+    Icon = "zap",
+    Callback = function()
+        getgenv().ADittoKey = "WTB_FREEKEY"
+pcall(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Potato5466794/GC-WTB/refs/heads/main/Loader/Loader.luau", true))()
+end)
+        WindUI:Notify({
+            Title = "脚本中心",
+            Content = "WTB脚本已加载",
+            Icon = "zap",
+        })
+    end
+})
+
+OtherScriptsSection:Button({
+    Title = "白脚本破解",
+    Desc = "我相信你的手机一定不会爆炸吧",
+    Icon = "unlock",
+    Callback = function()
+        loadstring(game:HttpGet('https://raw.githubusercontent.com/Sempiller/RainbowTool/main/Turkish.lua'))()
+        WindUI:Notify({
+            Title = "白脚本破解",
+            Content = "白脚本破解已加载",
+            Icon = "unlock",
+        })
+    end
+})
+
+OtherScriptsSection:Button({
+    Title = "xc脚本",
+    Desc = "加载xc脚本",
+    Icon = "x",
+    Callback = function()
+        loadstring(game:HttpGet("\104\116\116\112\115\58\47\47\112\97\115\116\101\98\105\110\46\99\111\109\47\114\97\119\47\103\101\109\120\72\119\65\49"))()
+        WindUI:Notify({
+            Title = "xc脚本",
+            Content = "xc脚本已加载",
+            Icon = "x",
+        })
+    end
+})
+
+-- 设置标签页 - 确保正确显示
+local SettingsTab = Window:Tab({
+    Title = "设置",
+    Icon = "settings",
+})
+
+-- 界面设置部分
+local UISection = SettingsTab:Section({
+    Title = "界面设置",
+})
+
+UISection:Colorpicker({
+    Title = "界面主题颜色",
+    Desc = "选择UI主题颜色",
+    Default = Color3.fromRGB(0, 85, 255),
+    Callback = function(color)
+        WindUI:Notify({
+            Title = "界面设置",
+            Content = "主题颜色已更新",
+            Icon = "palette",
+        })
+    end
+})
+
+-- 音量设置
+UISection:Slider({
+    Title = "音量大小",
+    Desc = "调整音乐播放音量",
+    Step = 0.1,
+    Value = {
+        Min = 0,
+        Max = 1,
+        Default = 0.5,
+    },
+    Callback = function(value)
+        _G.SoundVolume = value
+        if _G.CurrentSound then
+            _G.CurrentSound.Volume = value
+        end
+        WindUI:Notify({
+            Title = "音量设置",
+            Content = "音量已调整为: " .. string.format("%.1f", value),
+            Icon = "volume-2",
+        })
+    end
+})
+
+UISection:Button({
+    Title = "保存设置",
+    Icon = "save",
+    Color = Color3.fromHex("#30FF6A"),
+    Callback = function()
+        WindUI:Notify({
+            Title = "设置已保存",
+            Content = "所有设置已成功保存",
+            Icon = "check-circle",
+        })
+    end
+})
+
+UISection:Button({
+    Title = "重置设置",
+    Icon = "refresh-cw",
+    Color = Color3.fromHex("#FFA530"),
+    Callback = function()
+        _G.AutoChatEnabled = false
+        _G.CustomChatMessage = ""
+        _G.ChatInterval = 5
+        _G.Flying = false
+        _G.TargetPlayerName = ""
+        _G.WalkSpeedEnabled = false
+        _G.JumpPowerEnabled = false
+        _G.GravityEnabled = false
+        _G.NoclipEnabled = false
+        _G.ESPEnabled = false
+        _G.SoundVolume = 0.5
+        
+        if _G.ChatConnection then
+            _G.ChatConnection:Disconnect()
+            _G.ChatConnection = nil
+        end
+        
+        -- 停止穿墙模式
+        if _G.NoclipConnection then
+            _G.NoclipConnection:Disconnect()
+            _G.NoclipConnection = nil
+        end
+        
+        -- 停止音乐
+        if _G.CurrentSound then
+            _G.CurrentSound:Stop()
+            _G.CurrentSound:Destroy()
+            _G.CurrentSound = nil
+        end
+        
+        -- 清除ESP
+        clearESP()
+        
+        if _G.PlayerAddedConnection then
+            _G.PlayerAddedConnection:Disconnect()
+            _G.PlayerAddedConnection = nil
+        end
+        
+        if _G.PlayerRemovingConnection then
+            _G.PlayerRemovingConnection:Disconnect()
+            _G.PlayerRemovingConnection = nil
+        end
+        
+        -- 重置玩家属性
+        local player = game.Players.LocalPlayer
+        local character = player.Character
+        if character then
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = 16
+                humanoid.JumpPower = 50
+            end
+        end
+        
+        -- 重置环境
+        workspace.Gravity = 196.2
+        local Lighting = game:GetService("Lighting")
+        Lighting.Ambient = Color3.fromRGB(0, 0, 0)
+        Lighting.Brightness = 1
+        Lighting.ClockTime = 14
+        
+        -- 重置相机
+        workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+        
+        WindUI:Notify({
+            Title = "设置已重置",
+            Content = "所有设置已恢复默认值",
+            Icon = "refresh-cw",
+        })
+    end
+})
+
+-- 移动端适配通知
+local function setupMobileControls()
+    local UserInputService = game:GetService("UserInputService")
+    
+    if UserInputService.TouchEnabled then
+        WindUI:Notify({
+            Title = "移动端检测",
+            Content = "已优化为移动端使用",
+            Icon = "smartphone",
+        })
+    end
+end
+
+-- 初始化移动端适配
+setupMobileControls()
+
+-- 加载完成通知
+WindUI:Notify({
+    Title = "脚本中心",
+    Content = "欢迎使用脚本中心",
+    Icon = "check-circle",
+})
+
+print("WindUI脚本中心加载完成！")
