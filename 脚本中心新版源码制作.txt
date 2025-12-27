@@ -1,0 +1,96 @@
+--《全部都要复制 包括这句话》
+HUB = "脚本中心"
+Script = "通用脚本"
+
+-- 检查是否完全复制了脚本
+local function checkFullCopy()
+    -- 检查是否包含特定的注释
+    local scriptSource = debug.getinfo(1, "S").source
+    if scriptSource:sub(1, 1) == "@" then
+        scriptSource = scriptSource:sub(2)
+    end
+    
+    -- 检查是否包含特定的开头注释
+    local hasFullComment = false
+    local lines = {}
+    
+    -- 尝试读取脚本文件
+    if scriptSource and scriptSource ~= "" then
+        local success, file = pcall(function()
+            return readfile(scriptSource)
+        end)
+        
+        if success and file then
+            if file:find("--《全部都要复制 包括这句话》") then
+                hasFullComment = true
+            end
+        else
+            -- 如果无法读取文件，尝试其他方法检查
+            local currentLine = debug.getinfo(1, "n").currentline
+            if currentLine and currentLine > 1 then
+                hasFullComment = true
+            end
+        end
+    end
+    
+    -- 检查HUB和Script变量是否被定义
+    local hasVariables = (HUB == "脚本中心") and (Script == "通用脚本")
+    
+    return hasFullComment and hasVariables
+end
+
+-- 如果未完全复制，执行退出操作
+if not checkFullCopy() then
+    -- 发送提醒通知
+    local CoreGui = game:GetService("StarterGui")
+    
+    CoreGui:SetCore("SendNotification", {
+        Title = "🤔",
+        Text = "("请复制全部内容")",
+        Icon = "rbxassetid://75702897877244",
+        Duration = 3,
+    })
+    
+    -- 等待一下让用户看到通知
+    wait(3)
+    
+    -- 再次检查是否还是没有完全复制
+    if not checkFullCopy() then
+        -- 强制退出玩家
+        CoreGui:SetCore("SendNotification", {
+            Title = "错误",
+            Text = "都说了要复制全部→ --《全部都要复制 包括这句话》
+HUB = "脚本中心"
+Script = "通用脚本"
+loadstring(game:HttpGet("https://raw.githubusercontent.com/maninffg/-/refs/heads/main/main.lua"))()←",
+            Icon = "rbxassetid://75702897877244",
+            Duration = 2,
+        })
+        
+        wait(2)
+        
+        -- 直接踢出玩家
+        game:GetService("Players").LocalPlayer:Kick("都说了要复制全部")
+        return -- 停止执行后续代码
+    end
+end
+
+-- 如果完全复制了，执行主脚本
+local CoreGui = game:GetService("StarterGui")
+
+CoreGui:SetCore("SendNotification", {
+    Title = "脚本中心",
+    Text = "欢迎使用",
+    Icon = "rbxassetid://75702897877244",
+    Duration = 6, 
+})
+
+CoreGui:SetCore("SendNotification", {
+    Title = "正在加载",
+    Text = "请稍等",
+    Icon = "rbxassetid://75702897877244",
+    Duration = 6, 
+})
+
+-- 加载主脚本
+loadstring(game:HttpGet("https://raw.githubusercontent.com/maninffg/ubiquitous-octo-bassoon/refs/heads/main/ttyvuuthoxdydxxdhdyix553358357328giigisquibybb-8-%24%3B-8-8%228%24%3B%22%3B%3B8xd87535aaaa__%25%25_--"))()
